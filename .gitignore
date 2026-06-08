@@ -1,0 +1,6 @@
+# Streamlit secrets and generated output
+.streamlit/secrets.toml
+videos/
+thumbnails/
+__pycache__/
+*.pyc
