@@ -384,8 +384,8 @@ if result and Path(result["video_path"]).exists():
             "*Save to Google Drive setup*."
         )
     else:
-        if st.button("Save to Google Drive", use_container_width=True):
-            with st.spinner("Uploading to Google Drive…"):
+        if st.button("Save video to Google Drive", use_container_width=True):
+            with st.spinner("Uploading video to Google Drive…"):
                 try:
                     up_video = drive_utils.upload_file(
                         str(video_path),
@@ -393,15 +393,8 @@ if result and Path(result["video_path"]).exists():
                         sa_info,
                         mime_type="video/mp4",
                     )
-                    up_thumb = drive_utils.upload_file(
-                        str(thumb_path),
-                        f"{safe_name}_thumbnail.jpg",
-                        sa_info,
-                        mime_type="image/jpeg",
-                    )
                     st.session_state["drive_uploaded"] = {
                         "video_link": up_video.get("webViewLink", ""),
-                        "thumb_link": up_thumb.get("webViewLink", ""),
                     }
                 except drive_utils.DriveError as e:
                     st.session_state.pop("drive_uploaded", None)
@@ -413,10 +406,8 @@ if result and Path(result["video_path"]).exists():
         uploaded = st.session_state.get("drive_uploaded")
         if uploaded:
             st.markdown(
-                '<span class="badge badge--success">✓ Saved to Google Drive</span>',
+                '<span class="badge badge--success">✓ Video saved to Google Drive</span>',
                 unsafe_allow_html=True,
             )
             if uploaded.get("video_link"):
                 st.markdown(f"[Open video in Drive]({uploaded['video_link']})")
-            if uploaded.get("thumb_link"):
-                st.markdown(f"[Open thumbnail in Drive]({uploaded['thumb_link']})")

@@ -94,18 +94,55 @@ def upload_file(
         )
     except HttpError as e:
         status = getattr(getattr(e, "resp", None), "status", "?")
+
+        # Pull Google's structured reason/message out of the response body.
+        reason, detail = "", ""
+        try:
+            import json as _json
+            payload = _json.loads(e.content.decode("utf-8"))
+            err = payload.get("error", {})
+            detail = err.get("message", "")
+            errs = err.get("errors", [])
+            if errs:
+                reason = errs[0].get("reason", "")
+        except Exception:
+            pass
+
+        # Service accounts have no storage quota, so they cannot own files
+        # in a personal (non-Workspace) Drive — even a shared folder.
+        if reason == "storageQuotaExceeded" or "storage quota" in detail.lower():
+            raise DriveError(
+                "The service account has no storage quota of its own, so it "
+                "cannot save files into a personal Google Drive folder. "
+                "Use a Shared Drive (Google Workspace) with the service "
+                "account added as a member, or switch to OAuth user "
+                f"authentication. (Google: {detail or reason})"
+            ) from e
+
+        if reason == "accessNotConfigured":
+            raise DriveError(
+                "The Google Drive API is not enabled for this project. "
+                "Enable it under APIs & Services → Library, then retry. "
+                f"(Google: {detail or reason})"
+            ) from e
+
         if str(status) == "404":
             raise DriveError(
                 f"Folder '{folder_id}' not found or not shared with the "
                 "service account. Share the folder with the service "
-                "account's client_email as Editor."
+                f"account's client_email as Editor. (Google: {detail or reason})"
             ) from e
+
         if str(status) in ("401", "403"):
             raise DriveError(
-                "Permission denied. Confirm the folder is shared with the "
-                "service account as Editor and the Drive API is enabled."
+                "Permission denied"
+                + (f" ({reason})" if reason else "")
+                + ". Confirm the folder is shared with the service account "
+                "as Editor and the Drive API is enabled. "
+                f"(Google: {detail})"
             ) from e
-        raise DriveError(f"Drive upload failed (HTTP {status}): {e}") from e
+
+        raise DriveError(f"Drive upload failed (HTTP {status}): {detail or e}") from e
     except Exception as e:
         raise DriveError(f"Drive upload failed: {e}") from e
 
